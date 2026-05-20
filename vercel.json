@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "buildCommand": "cd apps/terminal && pnpm install && pnpm build",
+  "outputDirectory": "apps/terminal/.next",
+  "installCommand": "pnpm install",
+  "framework": "nextjs"
+}
