@@ -31,8 +31,14 @@ contract SwarmNFT is ERC721, AccessControl, ReentrancyGuard {
     /// @notice Mapping from swarm ID to its token-bound account address
     mapping(uint256 => address) public swarmAccount;
     
-    /// @notice Mapping from swarm ID to its architect (owner/commander)
-    mapping(uint256 => address) public swarmArchitect;
+    /// @notice Mint fee in native ETH — collected by protocol treasury
+    uint256 public constant MINT_FEE = 0.01 ether;
+    
+    /// @notice Protocol treasury address
+    address public treasury;
+    
+    /// @notice Total protocol revenue collected
+    uint256 public totalRevenue;
     
     /// @notice Swarm metadata: name, strategy, active agents
     struct SwarmConfig {
@@ -58,13 +64,16 @@ contract SwarmNFT is ERC721, AccessControl, ReentrancyGuard {
     
     constructor(
         address _tokenBoundRegistry,
-        address _accountImplementation
+        address _accountImplementation,
+        address _treasury
     ) ERC721("Aether-War Swarm", "SWARM") {
         require(_tokenBoundRegistry != address(0), "Invalid registry");
         require(_accountImplementation != address(0), "Invalid implementation");
+        require(_treasury != address(0), "Invalid treasury");
         
         tokenBoundRegistry = _tokenBoundRegistry;
         accountImplementation = _accountImplementation;
+        treasury = _treasury;
         
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -75,7 +84,8 @@ contract SwarmNFT is ERC721, AccessControl, ReentrancyGuard {
      * @notice Deploy a new Swarm. Mints NFT, creates ERC-6551 account, assigns architect.
      * @param name Human-readable swarm identifier
      */
-    function deploySwarm(string memory name) external returns (uint256 swarmId) {
+    function deploySwarm(string memory name) external payable returns (uint256 swarmId) {
+        require(msg.value >= MINT_FEE, "Insufficient mint fee");
         swarmId = ++_swarmIdCounter;
         
         // Mint the NFT
@@ -110,6 +120,11 @@ contract SwarmNFT is ERC721, AccessControl, ReentrancyGuard {
         
         // Grant architect role
         _grantRole(ARCHITECT_ROLE, msg.sender);
+        
+        // Send mint fee to treasury
+        (bool sent, ) = treasury.call{value: MINT_FEE}("");
+        require(sent, "Treasury transfer failed");
+        totalRevenue += MINT_FEE;
         
         emit SwarmDeployed(swarmId, msg.sender, account);
     }

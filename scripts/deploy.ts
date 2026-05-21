@@ -36,7 +36,7 @@ async function main() {
 
   // 2. Deploy Intent Market
   const IntentMarket = await ethers.getContractFactory("IntentMarket");
-  const intentMarket = await IntentMarket.deploy(deployer.address);
+  const intentMarket = await IntentMarket.deploy(deployer.address, deployer.address); // Treasury = deployer for now
   await intentMarket.waitForDeployment();
   console.log(`IntentMarket: ${await intentMarket.getAddress()}`);
 

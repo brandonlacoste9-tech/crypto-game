@@ -45,6 +45,9 @@ contract IntentMarket is ReentrancyGuard {
     mapping(uint256 => Quote[]) public quotes;
     
     address public physicsEngine;
+    address public treasury;
+    uint256 public totalFees;  // Total protocol fees collected
+    uint256 public constant TRADE_FEE_BPS = 50; // 0.5%
     
     // ── Events ────────────────────────────────────────────────────────────────
     
@@ -70,8 +73,9 @@ contract IntentMarket is ReentrancyGuard {
     
     // ── Constructor ───────────────────────────────────────────────────────────
     
-    constructor(address _physicsEngine) {
+    constructor(address _physicsEngine, address _treasury) {
         physicsEngine = _physicsEngine;
+        treasury = _treasury;
     }
     
     // ── Intent Creation ──────────────────────────────────────────────────────
@@ -159,17 +163,31 @@ contract IntentMarket is ReentrancyGuard {
         require(!quote.accepted, "Quote already accepted");
         
         quote.accepted = true;
-        
+
+        // Calculate protocol fee
+        uint256 fee = (quote.receiveAmount * TRADE_FEE_BPS) / 10000;
+        uint256 netReceive = quote.receiveAmount - fee;
+
         // Atomic swap via token transfers
         if (intent.intentType == IntentType.Sell) {
             // Creator selling tokenIn, solver selling tokenOut
             require(IERC20(intent.tokenIn).transferFrom(intent.creator, quote.solver, quote.fillAmount), "Transfer failed");
-            require(IERC20(intent.tokenOut).transferFrom(quote.solver, intent.creator, quote.receiveAmount), "Transfer failed");
+            require(IERC20(intent.tokenOut).transferFrom(quote.solver, intent.creator, netReceive), "Transfer failed");
+            // Fee: remaining tokenOut goes to treasury
+            if (fee > 0) {
+                require(IERC20(intent.tokenOut).transferFrom(quote.solver, treasury, fee), "Fee transfer failed");
+            }
         } else {
             // Creator buying tokenIn, solver selling tokenIn
-            require(IERC20(intent.tokenOut).transferFrom(intent.creator, quote.solver, quote.receiveAmount), "Transfer failed");
+            require(IERC20(intent.tokenOut).transferFrom(intent.creator, quote.solver, netReceive), "Transfer failed");
+            // Fee
+            if (fee > 0) {
+                require(IERC20(intent.tokenOut).transferFrom(intent.creator, treasury, fee), "Fee transfer failed");
+            }
             require(IERC20(intent.tokenIn).transferFrom(quote.solver, intent.creator, quote.fillAmount), "Transfer failed");
         }
+
+        totalFees += fee;
         
         // Update intent status
         uint256 newRemaining = _getRemainingAmount(intentId) - quote.fillAmount;
