@@ -69,7 +69,6 @@ contract AetherResource is ERC20, ERC20Permit, Ownable {
     
     function setDecayRate(uint16 _rateBPS) external onlyOwner {
         require(_rateBPS <= 10000, "Max 100%");
-        _applyDecay();
         decayRateBPS = _rateBPS;
     }
     

@@ -8,6 +8,14 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+  <script>
+    // Load contract ABIs and addresses
+    let CONTRACTS = null;
+    fetch('/contracts.json')
+      .then(r => r.json())
+      .then(d => { CONTRACTS = d; console.log('Contracts loaded:', Object.keys(d.addresses).length, 'deployments'); })
+      .catch(() => console.log('No contracts.json — using simulation mode'));
+  </script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -84,29 +92,61 @@
         setTick(t => t + 1);
         const t = tick + 1;
 
-        // If wallet connected, execute real transactions
-        if (wallet) {
+        // If wallet connected AND contracts loaded, execute real transactions
+        if (wallet && CONTRACTS) {
           try {
+            const signer = wallet;
+            const physics = new ethers.Contract(CONTRACTS.addresses.PhysicsEngine, CONTRACTS.abis.PhysicsEngine, signer);
+            const intentMarket = new ethers.Contract(CONTRACTS.addresses.IntentMarket, CONTRACTS.abis.IntentMarket, signer);
+            const energy = new ethers.Contract(CONTRACTS.addresses.Energy, CONTRACTS.abis.AetherResource, signer);
+            const compute = new ethers.Contract(CONTRACTS.addresses.Compute, CONTRACTS.abis.AetherResource, signer);
+            const data = new ethers.Contract(CONTRACTS.addresses.Data, CONTRACTS.abis.AetherResource, signer);
+
+            const addr = await signer.getAddress();
+
             // Scout: read on-chain state
-            addLog("SCOUT", `Scanning Sector Grid on-chain... Block #${t}. Detecting unclaimed sectors.`);
+            const worldState = await physics.getWorldState();
+            addLog("SCOUT", `On-chain scan — World tick #${worldState[0]}, ${worldState[2]} sectors, E:${ethers.formatEther(worldState[3]).slice(0,6)} C:${ethers.formatEther(worldState[4]).slice(0,6)} D:${ethers.formatEther(worldState[5]).slice(0,6)}`);
 
-            // Builder: claim a sector (simulated transaction)
-            // In production, this would call PhysicsEngine.claimSector()
-            const dummyTx = {
-              to: "0x0000000000000000000000000000000000000000",
-              value: ethers.parseEther("0.001"),
-            };
-            // await wallet.sendTransaction(dummyTx); // Real tx — uncomment for real
-            addLog("BUILDER", `Transaction prepared: claim sector #${12 + t} — gas estimated at 0.001 ETH. Ready to sign.`);
-            setResources(r => ({ energy: r.energy + 12, compute: r.compute - 3, data: r.data + 0.2 }));
+            // Read user's resource balances
+            const eBal = await energy.balanceOf(addr);
+            const cBal = await compute.balanceOf(addr);
+            const dBal = await data.balanceOf(addr);
+            setResources({ energy: Number(ethers.formatEther(eBal)), compute: Number(ethers.formatEther(cBal)), data: Number(ethers.formatEther(dBal)) });
 
-            // Closer
-            addLog("CLOSER", `Market scan complete. ${r.resources?.compute > 15 ? 'Excess Compute detected — creating SELL intent.' : 'Balanced portfolio. Holding.'}`);
-            
-            // Treasurer
-            addLog("TREASURER", `Vault review: ${(r.resources?.energy * 1 + r.resources?.compute * 10 + r.resources?.data * 100).toFixed(0)} value. Decay applied.`);
+            // Builder: claim a sector (real transaction!)
+            const unclaimedSectors = await physics.getActiveSectors();
+            const freeSector = unclaimedSectors.find(s => s.owner === ethers.ZeroAddress);
+            if (freeSector && cBal >= ethers.parseEther("5")) {
+              // Grant approval for compute burn
+              const approveTx = await compute.approve(CONTRACTS.addresses.PhysicsEngine, ethers.parseEther("5"));
+              await approveTx.wait();
+              addLog("BUILDER", `Approved 5 COMPUTE burn. TX: ${approveTx.hash.slice(0,10)}...`);
+
+              const claimTx = await physics.claimSector(freeSector.id, addr);
+              addLog("BUILDER", `⚡ Sector #${freeSector.id} CLAIMED on-chain! TX: ${claimTx.hash.slice(0,10)}... Block: ${await signer.provider.getBlockNumber()}`);
+            } else {
+              addLog("BUILDER", `All sectors claimed or insufficient Compute (need 5, have ${Number(ethers.formatEther(cBal)).toFixed(1)})`);
+            }
+
+            // Closer: create real intent on IntentMarket
+            const openIntents = await intentMarket.getActiveIntents();
+            addLog("CLOSER", `Intent Market scan — ${openIntents.length} active RFQs on-chain. ${cBal > ethers.parseEther("10") ? 'Creating SELL intent for 5 COMPUTE...' : 'Holding.'}`);
+
+            if (cBal > ethers.parseEther("10")) {
+              const approveTx = await compute.approve(CONTRACTS.addresses.IntentMarket, ethers.parseEther("5"));
+              await approveTx.wait();
+              const intentTx = await intentMarket.createIntent(1, CONTRACTS.addresses.Compute, CONTRACTS.addresses.Energy, ethers.parseEther("5"), ethers.parseEther("50"), 3600);
+              addLog("CLOSER", `⚡ SELL intent created on-chain — 5 COMPUTE → 50 ENERGY. TX: ${intentTx.hash.slice(0,10)}...`);
+            }
+
+            // Treasurer: read vault from on-chain
+            const total = Number(ethers.formatEther(eBal)) + Number(ethers.formatEther(cBal)) * 10 + Number(ethers.formatEther(dBal)) * 100;
+            addLog("TREASURER", `On-chain vault: ${total.toFixed(0)} value. ${Number(ethers.formatEther(eBal)) > 200 ? '⚠ High Energy — consider spending.' : 'Balanced.'}`);
+
           } catch(e) {
             addLog("ERROR", `Transaction failed: ${e.message?.slice(0, 80)}`);
+            console.error(e);
           }
         } else {
           // Simulation mode

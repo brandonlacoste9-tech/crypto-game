@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "../tokens/AetherResource.sol";
-import "../intents/IntentMarket.sol";
+import "./tokens/AetherResource.sol";
+import "./intents/IntentMarket.sol";
 
 /**
  * @title PhysicsEngine
