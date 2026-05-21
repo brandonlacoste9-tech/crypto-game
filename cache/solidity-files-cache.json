@@ -1338,8 +1338,8 @@
       ]
     },
     "C:\\Users\\booboo\\crypto-game\\contracts\\swarm\\SwarmNFT.sol": {
-      "lastModificationDate": 1779322504627,
-      "contentHash": "5a0745afe44195b459fd3e8b4bf7ce6e",
+      "lastModificationDate": 1779322877186,
+      "contentHash": "2a17030be542e86c9ea68aee8caa1704",
       "sourceName": "contracts/swarm/SwarmNFT.sol",
       "solcConfig": {
         "version": "0.8.25",

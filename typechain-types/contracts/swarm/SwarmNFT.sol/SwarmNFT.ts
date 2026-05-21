@@ -67,7 +67,10 @@ export interface SwarmNFTInterface extends Interface {
       | "approve"
       | "authorizeTreasurer"
       | "balanceOf"
+      | "claimFreeSwarm"
       | "deploySwarm"
+      | "deploySwarmWithReferral"
+      | "freeMintClaimed"
       | "getApproved"
       | "getRoleAdmin"
       | "getSwarmAccount"
@@ -100,6 +103,8 @@ export interface SwarmNFTInterface extends Interface {
     nameOrSignatureOrTopic:
       | "Approval"
       | "ApprovalForAll"
+      | "FreeMintClaimed"
+      | "ReferralReward"
       | "RoleAdminChanged"
       | "RoleGranted"
       | "RoleRevoked"
@@ -138,7 +143,19 @@ export interface SwarmNFTInterface extends Interface {
     functionFragment: "balanceOf",
     values: [AddressLike]
   ): string;
+  encodeFunctionData(
+    functionFragment: "claimFreeSwarm",
+    values: [string]
+  ): string;
   encodeFunctionData(functionFragment: "deploySwarm", values: [string]): string;
+  encodeFunctionData(
+    functionFragment: "deploySwarmWithReferral",
+    values: [string, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "freeMintClaimed",
+    values: [AddressLike]
+  ): string;
   encodeFunctionData(
     functionFragment: "getApproved",
     values: [BigNumberish]
@@ -259,7 +276,19 @@ export interface SwarmNFTInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "claimFreeSwarm",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "deploySwarm",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "deploySwarmWithReferral",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "freeMintClaimed",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -377,6 +406,37 @@ export namespace ApprovalForAllEvent {
     owner: string;
     operator: string;
     approved: boolean;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace FreeMintClaimedEvent {
+  export type InputTuple = [player: AddressLike, swarmId: BigNumberish];
+  export type OutputTuple = [player: string, swarmId: bigint];
+  export interface OutputObject {
+    player: string;
+    swarmId: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ReferralRewardEvent {
+  export type InputTuple = [
+    swarmId: BigNumberish,
+    referrer: AddressLike,
+    amount: BigNumberish
+  ];
+  export type OutputTuple = [swarmId: bigint, referrer: string, amount: bigint];
+  export interface OutputObject {
+    swarmId: bigint;
+    referrer: string;
+    amount: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -575,7 +635,17 @@ export interface SwarmNFT extends BaseContract {
 
   balanceOf: TypedContractMethod<[owner: AddressLike], [bigint], "view">;
 
+  claimFreeSwarm: TypedContractMethod<[name: string], [bigint], "nonpayable">;
+
   deploySwarm: TypedContractMethod<[name: string], [bigint], "payable">;
+
+  deploySwarmWithReferral: TypedContractMethod<
+    [name: string, referrer: AddressLike],
+    [bigint],
+    "payable"
+  >;
+
+  freeMintClaimed: TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
 
   getApproved: TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
 
@@ -738,8 +808,21 @@ export interface SwarmNFT extends BaseContract {
     nameOrSignature: "balanceOf"
   ): TypedContractMethod<[owner: AddressLike], [bigint], "view">;
   getFunction(
+    nameOrSignature: "claimFreeSwarm"
+  ): TypedContractMethod<[name: string], [bigint], "nonpayable">;
+  getFunction(
     nameOrSignature: "deploySwarm"
   ): TypedContractMethod<[name: string], [bigint], "payable">;
+  getFunction(
+    nameOrSignature: "deploySwarmWithReferral"
+  ): TypedContractMethod<
+    [name: string, referrer: AddressLike],
+    [bigint],
+    "payable"
+  >;
+  getFunction(
+    nameOrSignature: "freeMintClaimed"
+  ): TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
   getFunction(
     nameOrSignature: "getApproved"
   ): TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
@@ -898,6 +981,20 @@ export interface SwarmNFT extends BaseContract {
     ApprovalForAllEvent.OutputObject
   >;
   getEvent(
+    key: "FreeMintClaimed"
+  ): TypedContractEvent<
+    FreeMintClaimedEvent.InputTuple,
+    FreeMintClaimedEvent.OutputTuple,
+    FreeMintClaimedEvent.OutputObject
+  >;
+  getEvent(
+    key: "ReferralReward"
+  ): TypedContractEvent<
+    ReferralRewardEvent.InputTuple,
+    ReferralRewardEvent.OutputTuple,
+    ReferralRewardEvent.OutputObject
+  >;
+  getEvent(
     key: "RoleAdminChanged"
   ): TypedContractEvent<
     RoleAdminChangedEvent.InputTuple,
@@ -968,6 +1065,28 @@ export interface SwarmNFT extends BaseContract {
       ApprovalForAllEvent.InputTuple,
       ApprovalForAllEvent.OutputTuple,
       ApprovalForAllEvent.OutputObject
+    >;
+
+    "FreeMintClaimed(address,uint256)": TypedContractEvent<
+      FreeMintClaimedEvent.InputTuple,
+      FreeMintClaimedEvent.OutputTuple,
+      FreeMintClaimedEvent.OutputObject
+    >;
+    FreeMintClaimed: TypedContractEvent<
+      FreeMintClaimedEvent.InputTuple,
+      FreeMintClaimedEvent.OutputTuple,
+      FreeMintClaimedEvent.OutputObject
+    >;
+
+    "ReferralReward(uint256,address,uint256)": TypedContractEvent<
+      ReferralRewardEvent.InputTuple,
+      ReferralRewardEvent.OutputTuple,
+      ReferralRewardEvent.OutputObject
+    >;
+    ReferralReward: TypedContractEvent<
+      ReferralRewardEvent.InputTuple,
+      ReferralRewardEvent.OutputTuple,
+      ReferralRewardEvent.OutputObject
     >;
 
     "RoleAdminChanged(bytes32,bytes32,bytes32)": TypedContractEvent<

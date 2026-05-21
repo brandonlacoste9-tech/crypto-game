@@ -43,6 +43,9 @@ contract SwarmNFT is ERC721, AccessControl, ReentrancyGuard {
     /// @notice Mapping from swarm ID to its architect (owner/commander)
     mapping(uint256 => address) public swarmArchitect;
     
+    /// @notice Track who has already claimed their free mint
+    mapping(address => bool) public freeMintClaimed;
+    
     /// @notice Swarm metadata: name, strategy, active agents
     struct SwarmConfig {
         string name;
@@ -62,6 +65,8 @@ contract SwarmNFT is ERC721, AccessControl, ReentrancyGuard {
     event SwarmDeployed(uint256 indexed swarmId, address indexed architect, address account);
     event SwarmAccountCreated(uint256 indexed swarmId, address account);
     event TreasurerAuthorized(uint256 indexed swarmId, address treasurer);
+    event ReferralReward(uint256 indexed swarmId, address indexed referrer, uint256 amount);
+    event FreeMintClaimed(address indexed player, uint256 swarmId);
     
     // ── Constructor ───────────────────────────────────────────────────────────
     
@@ -89,6 +94,29 @@ contract SwarmNFT is ERC721, AccessControl, ReentrancyGuard {
      */
     function deploySwarm(string memory name) external payable returns (uint256 swarmId) {
         require(msg.value >= MINT_FEE, "Insufficient mint fee");
+        swarmId = _deploySwarm(name, msg.sender);
+    }
+
+    /**
+     * @notice Deploy with referral — referrer gets 50% of mint fee
+     */
+    function deploySwarmWithReferral(string memory name, address referrer) external payable returns (uint256 swarmId) {
+        require(msg.value >= MINT_FEE, "Insufficient mint fee");
+        require(referrer != msg.sender, "Cannot refer yourself");
+        require(referrer != address(0), "Invalid referrer");
+        
+        swarmId = _deploySwarm(name, msg.sender);
+        
+        // 50% kickback to referrer
+        uint256 referralReward = MINT_FEE / 2;
+        (bool sent, ) = referrer.call{value: referralReward}("");
+        require(sent, "Referral reward failed");
+        totalRevenue -= referralReward; // Net revenue after referral
+        
+        emit ReferralReward(swarmId, referrer, referralReward);
+    }
+
+    function _deploySwarm(string memory name, address architect) private returns (uint256 swarmId) {
         swarmId = ++_swarmIdCounter;
         
         // Mint the NFT
@@ -132,6 +160,18 @@ contract SwarmNFT is ERC721, AccessControl, ReentrancyGuard {
         emit SwarmDeployed(swarmId, msg.sender, account);
     }
     
+    /**
+     * @notice Free first swarm — one per address. No gas beyond transaction.
+     */
+    function claimFreeSwarm(string memory name) external returns (uint256 swarmId) {
+        require(!freeMintClaimed[msg.sender], "Already claimed free mint");
+        freeMintClaimed[msg.sender] = true;
+        
+        swarmId = _deploySwarm(name, msg.sender);
+        
+        emit FreeMintClaimed(msg.sender, swarmId);
+    }
+
     // ── Treasurer Authorization ──────────────────────────────────────────────
     
     /**
