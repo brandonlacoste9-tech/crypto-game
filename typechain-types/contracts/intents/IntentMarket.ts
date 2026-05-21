@@ -90,6 +90,7 @@ export declare namespace IntentMarket {
 export interface IntentMarketInterface extends Interface {
   getFunction(
     nameOrSignature:
+      | "TRADE_FEE_BPS"
       | "acceptQuote"
       | "cancelIntent"
       | "createIntent"
@@ -101,6 +102,8 @@ export interface IntentMarketInterface extends Interface {
       | "physicsEngine"
       | "quotes"
       | "submitQuote"
+      | "totalFees"
+      | "treasury"
   ): FunctionFragment;
 
   getEvent(
@@ -112,6 +115,10 @@ export interface IntentMarketInterface extends Interface {
       | "QuoteSubmitted"
   ): EventFragment;
 
+  encodeFunctionData(
+    functionFragment: "TRADE_FEE_BPS",
+    values?: undefined
+  ): string;
   encodeFunctionData(
     functionFragment: "acceptQuote",
     values: [BigNumberish, BigNumberish]
@@ -163,7 +170,13 @@ export interface IntentMarketInterface extends Interface {
     functionFragment: "submitQuote",
     values: [BigNumberish, BigNumberish, BigNumberish]
   ): string;
+  encodeFunctionData(functionFragment: "totalFees", values?: undefined): string;
+  encodeFunctionData(functionFragment: "treasury", values?: undefined): string;
 
+  decodeFunctionResult(
+    functionFragment: "TRADE_FEE_BPS",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "acceptQuote",
     data: BytesLike
@@ -196,6 +209,8 @@ export interface IntentMarketInterface extends Interface {
     functionFragment: "submitQuote",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "totalFees", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "treasury", data: BytesLike): Result;
 }
 
 export namespace IntentCancelledEvent {
@@ -340,6 +355,8 @@ export interface IntentMarket extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  TRADE_FEE_BPS: TypedContractMethod<[], [bigint], "view">;
+
   acceptQuote: TypedContractMethod<
     [intentId: BigNumberish, quoteIndex: BigNumberish],
     [void],
@@ -447,10 +464,17 @@ export interface IntentMarket extends BaseContract {
     "nonpayable"
   >;
 
+  totalFees: TypedContractMethod<[], [bigint], "view">;
+
+  treasury: TypedContractMethod<[], [string], "view">;
+
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
 
+  getFunction(
+    nameOrSignature: "TRADE_FEE_BPS"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "acceptQuote"
   ): TypedContractMethod<
@@ -557,6 +581,12 @@ export interface IntentMarket extends BaseContract {
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "totalFees"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "treasury"
+  ): TypedContractMethod<[], [string], "view">;
 
   getEvent(
     key: "IntentCancelled"

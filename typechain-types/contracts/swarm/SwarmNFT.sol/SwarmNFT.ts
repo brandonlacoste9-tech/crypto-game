@@ -61,6 +61,7 @@ export interface SwarmNFTInterface extends Interface {
     nameOrSignature:
       | "ARCHITECT_ROLE"
       | "DEFAULT_ADMIN_ROLE"
+      | "MINT_FEE"
       | "TREASURER_ROLE"
       | "accountImplementation"
       | "approve"
@@ -89,8 +90,10 @@ export interface SwarmNFTInterface extends Interface {
       | "symbol"
       | "tokenBoundRegistry"
       | "tokenURI"
+      | "totalRevenue"
       | "totalSwarms"
       | "transferFrom"
+      | "treasury"
   ): FunctionFragment;
 
   getEvent(
@@ -114,6 +117,7 @@ export interface SwarmNFTInterface extends Interface {
     functionFragment: "DEFAULT_ADMIN_ROLE",
     values?: undefined
   ): string;
+  encodeFunctionData(functionFragment: "MINT_FEE", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "TREASURER_ROLE",
     values?: undefined
@@ -218,6 +222,10 @@ export interface SwarmNFTInterface extends Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
+    functionFragment: "totalRevenue",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "totalSwarms",
     values?: undefined
   ): string;
@@ -225,6 +233,7 @@ export interface SwarmNFTInterface extends Interface {
     functionFragment: "transferFrom",
     values: [AddressLike, AddressLike, BigNumberish]
   ): string;
+  encodeFunctionData(functionFragment: "treasury", values?: undefined): string;
 
   decodeFunctionResult(
     functionFragment: "ARCHITECT_ROLE",
@@ -234,6 +243,7 @@ export interface SwarmNFTInterface extends Interface {
     functionFragment: "DEFAULT_ADMIN_ROLE",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "MINT_FEE", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "TREASURER_ROLE",
     data: BytesLike
@@ -320,6 +330,10 @@ export interface SwarmNFTInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "tokenURI", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "totalRevenue",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "totalSwarms",
     data: BytesLike
   ): Result;
@@ -327,6 +341,7 @@ export interface SwarmNFTInterface extends Interface {
     functionFragment: "transferFrom",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "treasury", data: BytesLike): Result;
 }
 
 export namespace ApprovalEvent {
@@ -540,6 +555,8 @@ export interface SwarmNFT extends BaseContract {
 
   DEFAULT_ADMIN_ROLE: TypedContractMethod<[], [string], "view">;
 
+  MINT_FEE: TypedContractMethod<[], [bigint], "view">;
+
   TREASURER_ROLE: TypedContractMethod<[], [string], "view">;
 
   accountImplementation: TypedContractMethod<[], [string], "view">;
@@ -558,7 +575,7 @@ export interface SwarmNFT extends BaseContract {
 
   balanceOf: TypedContractMethod<[owner: AddressLike], [bigint], "view">;
 
-  deploySwarm: TypedContractMethod<[name: string], [bigint], "nonpayable">;
+  deploySwarm: TypedContractMethod<[name: string], [bigint], "payable">;
 
   getApproved: TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
 
@@ -672,6 +689,8 @@ export interface SwarmNFT extends BaseContract {
 
   tokenURI: TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
 
+  totalRevenue: TypedContractMethod<[], [bigint], "view">;
+
   totalSwarms: TypedContractMethod<[], [bigint], "view">;
 
   transferFrom: TypedContractMethod<
@@ -679,6 +698,8 @@ export interface SwarmNFT extends BaseContract {
     [void],
     "nonpayable"
   >;
+
+  treasury: TypedContractMethod<[], [string], "view">;
 
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
@@ -690,6 +711,9 @@ export interface SwarmNFT extends BaseContract {
   getFunction(
     nameOrSignature: "DEFAULT_ADMIN_ROLE"
   ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "MINT_FEE"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "TREASURER_ROLE"
   ): TypedContractMethod<[], [string], "view">;
@@ -715,7 +739,7 @@ export interface SwarmNFT extends BaseContract {
   ): TypedContractMethod<[owner: AddressLike], [bigint], "view">;
   getFunction(
     nameOrSignature: "deploySwarm"
-  ): TypedContractMethod<[name: string], [bigint], "nonpayable">;
+  ): TypedContractMethod<[name: string], [bigint], "payable">;
   getFunction(
     nameOrSignature: "getApproved"
   ): TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
@@ -843,6 +867,9 @@ export interface SwarmNFT extends BaseContract {
     nameOrSignature: "tokenURI"
   ): TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
   getFunction(
+    nameOrSignature: "totalRevenue"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
     nameOrSignature: "totalSwarms"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
@@ -852,6 +879,9 @@ export interface SwarmNFT extends BaseContract {
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "treasury"
+  ): TypedContractMethod<[], [string], "view">;
 
   getEvent(
     key: "Approval"

@@ -40,6 +40,9 @@ contract SwarmNFT is ERC721, AccessControl, ReentrancyGuard {
     /// @notice Total protocol revenue collected
     uint256 public totalRevenue;
     
+    /// @notice Mapping from swarm ID to its architect (owner/commander)
+    mapping(uint256 => address) public swarmArchitect;
+    
     /// @notice Swarm metadata: name, strategy, active agents
     struct SwarmConfig {
         string name;
